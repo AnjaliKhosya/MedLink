@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:medlink/wrapper.dart';
 import 'firebase_options.dart';
+import 'medhub/add_document.dart';
 
 
 void main() async {
@@ -22,10 +23,10 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'MedLink',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: const SplashScreen(),
+      home:SplashScreen(),
     );
   }
 }
@@ -46,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen> {
     Future.delayed(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) =>  Wrapper()), // Navigate to your LoginScreen here
+        MaterialPageRoute(builder: (context) =>  AddDocumentPage()), // Navigate to your LoginScreen here
       );
     });
   }
