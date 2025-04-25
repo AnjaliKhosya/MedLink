@@ -59,7 +59,7 @@ class _signUpScreenState extends State<signUpScreen> {
           padding: const EdgeInsets.only(left: 85.0),
           child: Text('Sign Up',style: TextStyle(fontSize: 25,color: Colors.white,fontFamily: 'Italicfont',fontWeight: FontWeight.bold),),
         ),
-        backgroundColor: Color(0xFF0B0B45),
+        backgroundColor: Color(0xFF57BA75),
         iconTheme: IconThemeData(
             color: Colors.white
         ),
@@ -68,26 +68,26 @@ class _signUpScreenState extends State<signUpScreen> {
         child: Container(
           height: MediaQuery.of(context).size.height,
           width:  MediaQuery.of(context).size.width,
-          color: Color(0XffD9D9D9),
+          color: Colors.white,
           child: Padding(
             padding: const EdgeInsets.only(top:20.0,left: 30.0,right: 30.0,bottom: 30.0),
             child: Container(
               width: MediaQuery.of(context).size.height,
               height: MediaQuery.of(context).size.width,
-              color: Color(0XffD9D9D9),
+              color: Colors.white,
               child: Padding(
                 padding: const EdgeInsets.only(top:80.0),
                 child: Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 80),
+                      padding: const EdgeInsets.only(bottom: 50),
                       child: Column(
                           children:[
                             Padding(
-                              padding: const EdgeInsets.only(left: 17.0),
-                              child: Image.asset('assets/images/loginScreen.jpg',),
+                              padding: const EdgeInsets.only(left: 10.0),
+                              child: Image.asset('assets/images/Login.jpeg',),
                             ),
-                            Text('RoomateSync',style: TextStyle(fontFamily: 'Italicfont',fontSize: 30,color: Color(0Xfff353535),fontWeight: FontWeight.bold),),
+                            Text('MedLink',style: TextStyle(fontFamily: 'Italicfont',fontSize: 30,color: Color(0Xfff353535),fontWeight: FontWeight.bold),),
                           ]
                       ),
                     ),
@@ -197,7 +197,7 @@ class _signUpScreenState extends State<signUpScreen> {
                             signUp();
                           },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFF0B0B45),
+                                backgroundColor: Color(0xFF57BA75),
                               ),
                               child: Text('Sign up',style: TextStyle(fontSize: 18,fontWeight: FontWeight.w300,color: Colors.white,fontFamily: 'Italicfont'),)),
                         ),//Login

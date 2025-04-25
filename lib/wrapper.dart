@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'MainScreen.dart';
+import 'package:medlink/MainScreen.dart';
 import 'Varify.dart';
 import 'loginScreen.dart';
 
@@ -36,7 +36,7 @@ class _WrapperState extends State<Wrapper> {
 
               if (user != null) {
                 if (user.emailVerified) {
-                  Get.offAll(() => MainScreen()); // 🔄 roomCode removed
+                  Get.offAll(() => HomePage()); // 🔄 roomCode removed
                 } else {
                   Get.offAll(() => Varify());
                 }
