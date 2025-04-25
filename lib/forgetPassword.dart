@@ -78,7 +78,7 @@ class _forgetPasswordState extends State<forgetPassword> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(left: 100.0),
-                  child: Image.asset('assets/images/Forgot Password Icon | Hugeicons Pro.jpg',height: 200,width: 200,),
+                  child: Image.asset('assets/images/ForgetPassword.jpg',height: 200,width: 200,),
                 ),//image
                 SizedBox(height: 50,),
                 Padding(
