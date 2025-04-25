@@ -100,7 +100,7 @@ class _loginScreenState extends State<loginScreen>
         child: Container(
           height: MediaQuery.of(context).size.height,
           width:  MediaQuery.of(context).size.width,
-          color: Color(0XffD9D9D9),
+          color: Colors.white,
           child: Padding(
             padding: const EdgeInsets.only(top:20.0,left: 30.0,right: 30.0,bottom: 30.0),
             child: Container(
@@ -112,14 +112,14 @@ class _loginScreenState extends State<loginScreen>
                   child: Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 60),
+                        padding: const EdgeInsets.only(bottom: 40),
                         child: Column(
                             children:[
                               Padding(
-                                padding: const EdgeInsets.only(left: 17.0),
-                                child: Image.asset('assets/images/loginScreen.jpg',),
+                                padding: const EdgeInsets.only(left: 5.0),
+                                child: Image.asset('assets/images/Login.jpeg',),
                               ),
-                              Text('RoomateSync',style: TextStyle(fontFamily: 'Italicfont',fontSize: 30,color: Color(0Xfff353535),fontWeight: FontWeight.bold),),
+                              Text('MedLink',style: TextStyle(fontFamily: 'Italicfont',fontSize: 30,color: Color(0Xfff353535),fontWeight: FontWeight.bold),),
                             ]
                         ),
                       ),
@@ -239,7 +239,7 @@ class _loginScreenState extends State<loginScreen>
                                 signIn();
                               },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color(0xFF0B0B45),
+                                    backgroundColor: Color(0xFF57BA75),
                                   ),
                                   child: Text('Sign in',style: TextStyle(fontSize: 18,fontWeight: FontWeight.w300,color: Colors.white,fontFamily: 'Italicfont'),)),
                             ),//Login
@@ -272,7 +272,7 @@ class _loginScreenState extends State<loginScreen>
                               height: 40,
                               child: ElevatedButton(onPressed: () => signInWithGoogle(),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFF0B0B45),
+                                  backgroundColor: Color(0xFF57BA75),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,

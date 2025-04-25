@@ -4,7 +4,6 @@ import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:medlink/wrapper.dart';
 import 'firebase_options.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -30,42 +29,70 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// Splash Screen widget
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
   @override
   void initState() {
     super.initState();
-    // Navigate to LoginScreen after a delay (e.g., 3 seconds)
+
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+
+    _controller.forward();
+
     Future.delayed(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) =>  Wrapper()), // Navigate to your LoginScreen here
+        MaterialPageRoute(builder: (context) => Wrapper()),
       );
     });
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple, // You can customize the color
-      body: Center(
-        child: Text(
-          'Welcome to MedLink!',
-          style: TextStyle(
-            fontSize: 24,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF3AA5D1), Color(0xFF57BA75)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
+          child: FadeTransition(
+            opacity: _animation,
+            child: Image.asset(
+              'assets/images/SplashScreen.png',
+              width: 200,
+              height: 200,
+            ),
           ),
         ),
       ),
     );
   }
 }
-
