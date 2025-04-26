@@ -3,7 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
-import 'package:medlink/wrapper.dart';
+import 'package:medlink/Authentication/wrapper.dart';
 
 class Varify extends StatefulWidget{
   @override

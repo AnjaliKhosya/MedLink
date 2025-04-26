@@ -1,8 +1,8 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image_picker/image_picker.dart';
 
 class AddDocumentPage extends StatefulWidget {
   @override
@@ -10,115 +10,100 @@ class AddDocumentPage extends StatefulWidget {
 }
 
 class _AddDocumentPageState extends State<AddDocumentPage> {
-  List<PlatformFile>? _selectedFiles;
+  PlatformFile? _selectedFile;
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _groupController = TextEditingController();
-  final ImagePicker _imagePicker = ImagePicker();
 
-  Future<void> _pickMedia() async {
-    // Show a dialog to choose between file picker or camera
-    final choice = await showDialog<int>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Select Media"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text("Select Files"),
-                onTap: () {
-                  Navigator.of(context).pop(0); // Choose file picker
-                },
-              ),
-              ListTile(
-                title: Text("Take Photo"),
-                onTap: () {
-                  Navigator.of(context).pop(1); // Choose camera
-                },
-              ),
-            ],
-          ),
-        );
-      },
+  Future<void> _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
     );
 
-    if (choice != null) {
-      if (choice == 0) {
-        // File picker option
-        FilePickerResult? result = await FilePicker.platform.pickFiles(
-          allowMultiple: true,
-          type: FileType.custom,
-          allowedExtensions: ['pdf', 'jpg', 'png', 'doc', 'docx'],
-        );
-
-        if (result != null) {
-          setState(() {
-            _selectedFiles = result.files;
-          });
-        }
-      } else if (choice == 1) {
-        // Camera option
-        final XFile? photo = await _imagePicker.pickImage(source: ImageSource.camera);
-        if (photo != null) {
-          setState(() {
-            final int filesize = File(photo.path).lengthSync();
-            _selectedFiles = [
-              PlatformFile(
-                size: filesize,
-                name: photo.name,
-                path: photo.path,
-                bytes: File(photo.path).readAsBytesSync(),
-              ),
-            ];
-          });
-        }
-      }
+    if (result != null) {
+      setState(() {
+        _selectedFile = result.files.first;
+      });
     }
   }
 
   Future<void> _submit() async {
     final groupName = _groupController.text.trim();
+    final description = _descriptionController.text.trim();
+    final user = FirebaseAuth.instance.currentUser;
+    final userId = user?.uid;
 
-    if (_selectedFiles != null && groupName.isNotEmpty) {
-      final storageRef = FirebaseStorage.instance.ref().child("meddocuments/$groupName");
+    if (_selectedFile != null && groupName.isNotEmpty && userId != null) {
+      try {
+        final groupDocRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('MediRecords')
+            .doc(groupName);
 
-      for (PlatformFile file in _selectedFiles!) {
-        final fileBytes = file.bytes;
-        final fileName = file.name;
+        // Save group metadata in Firestore (this can be optional, depending on what metadata you want for each group)
+        await groupDocRef.set({
+          'groupName': groupName,
+          'createdAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true)); // Use merge to prevent overwriting if group already exists
 
-        try {
-          final fileRef = storageRef.child(fileName);
+        // Generate a unique file ID
+        final fileId = FirebaseFirestore.instance.collection('users')
+            .doc(userId)
+            .collection('MediRecords')
+            .doc(groupName)
+            .collection('files')
+            .doc().id;  // Generate unique ID
 
-          if (fileBytes != null) {
-            await fileRef.putData(fileBytes);
-          } else if (file.path != null) {
-            await fileRef.putFile(File(file.path!));
-          }
+        final fileUrl = await _getFileUrl(_selectedFile!);
 
-          print("Uploaded: $fileName");
-        } catch (e) {
-          print("Error uploading $fileName: $e");
+        if (fileUrl.isNotEmpty) {
+          // Store the file metadata in the Firestore 'files' sub-collection of the group
+          await groupDocRef.collection('files').doc(fileId).set({
+            'fileName': _selectedFile!.name,
+            'fileUrl': fileUrl,
+            'uploadedAt': FieldValue.serverTimestamp(),
+            'description': description,
+          });
+
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Failed to upload $fileName")),
+            SnackBar(content: Text("Document uploaded successfully.")),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to get URL for the file.")),
           );
         }
+
+        // Clear fields after successful upload
+        setState(() {
+          _selectedFile = null;
+          _groupController.clear();
+          _descriptionController.clear();
+        });
+      } catch (e) {
+        print("Error: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("An error occurred. Please try again.")),
+        );
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Documents uploaded successfully.")),
-      );
-
-      setState(() {
-        _selectedFiles = null;
-        _groupController.clear();
-        _descriptionController.clear();
-      });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please upload documents and enter group name")),
+        SnackBar(content: Text("Please upload a document and enter group name")),
       );
     }
+  }
+
+  Future<String> _getFileUrl(PlatformFile file) async {
+    // Replace this with actual code to generate or fetch the file URL
+    // For example, upload the file to a third-party hosting service and get the URL
+
+    // If you're fetching the URL from a hosting service:
+    // final url = await YourFileHostingService.uploadFile(file);
+
+    // For now, just simulating returning a URL:
+    return "https://example.com/files/${file.name}";
   }
 
   @override
@@ -159,7 +144,7 @@ class _AddDocumentPageState extends State<AddDocumentPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "Upload Documents",
+                  "Upload Document",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w600,
@@ -168,8 +153,8 @@ class _AddDocumentPageState extends State<AddDocumentPage> {
                 ),
                 SizedBox(height: 20),
                 ElevatedButton.icon(
-                  icon: Icon(Icons.add),
-                  label: Text("Select File or Take Photo"),
+                  icon: Icon(Icons.upload_file),
+                  label: Text("Select File"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal[600],
                     foregroundColor: Colors.white,
@@ -178,13 +163,13 @@ class _AddDocumentPageState extends State<AddDocumentPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: _pickMedia,
+                  onPressed: _pickFile, // Directly pick file
                 ),
-                if (_selectedFiles != null)
+                if (_selectedFile != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
                     child: Text(
-                      "${_selectedFiles!.length} files selected",
+                      "${_selectedFile!.name} selected",
                       style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                     ),
                   ),
@@ -224,7 +209,7 @@ class _AddDocumentPageState extends State<AddDocumentPage> {
                     onPressed: _submit,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Text("Upload Documents", style: TextStyle(fontSize: 16)),
+                      child: Text("Upload Document", style: TextStyle(fontSize: 16, color: Colors.white)),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.teal,

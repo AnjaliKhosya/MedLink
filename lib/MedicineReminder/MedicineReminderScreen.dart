@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,9 +14,39 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  String? token;
 
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
+  @override
+  void initState() {
+    _initFCMToken();
+    super.initState();
+  }
+
+  void _initFCMToken() async {
+    String? token = await FirebaseMessaging.instance.getToken();
+
+    if (token != null) {
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('user_details')
+          .doc('FCMToken')
+          .set({'token': token}, SetOptions(merge: true));
+      print("stored succesffully");
+    }
+  }
+
+
+
+  static const String oneTime = "one-time";
+  static const String recurring = "recurring";
+  String _reminderType = oneTime;
+  int? _selectedWeekday;
 
   InputDecoration _inputDecoration(String hint, {IconData? icon}) {
     return InputDecoration(
@@ -25,6 +56,62 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
       suffixIcon: icon != null ? Icon(icon, color: const Color(0xFF0B0B45)) : null,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
     );
+  }
+
+  Widget _buildReminderTypeSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Reminder Type",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0B0B45)),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: RadioListTile<String>(
+                title: const Text("One-Time"),
+                value: oneTime,
+                groupValue: _reminderType,
+                onChanged: (value) => setState(() => _reminderType = value!),
+              ),
+            ),
+            Expanded(
+              child: RadioListTile<String>(
+                title: const Text("Recurring"),
+                value: recurring,
+                groupValue: _reminderType,
+                onChanged: (value) => setState(() => _reminderType = value!),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeekdaySelector() {
+    final days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return _reminderType == recurring
+        ? Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        const Text("Select Day of Week", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0B0B45))),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          children: List.generate(7, (index) {
+            return ChoiceChip(
+              label: Text(days[index]),
+              selected: _selectedWeekday == index,
+              onSelected: (_) => setState(() => _selectedWeekday = index),
+            );
+          }),
+        ),
+      ],
+    )
+        : const SizedBox();
   }
 
   @override
@@ -50,6 +137,8 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              _buildReminderTypeSelector(),
+              const SizedBox(height: 20),
               const Text(
                 "Reminder Title",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0B0B45)),
@@ -61,32 +150,35 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
                 validator: (value) => value == null || value.trim().isEmpty ? 'Please enter a title' : null,
               ),
               const SizedBox(height: 20),
-              const Text(
-                "Select Date",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0B0B45)),
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _dateController,
-                readOnly: true,
-                decoration: _inputDecoration('Choose a date', icon: Icons.calendar_today),
-                onTap: () async {
-                  final pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: selectedDate ?? DateTime.now(),
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime(2100),
-                  );
-                  if (pickedDate != null) {
-                    setState(() {
-                      selectedDate = pickedDate;
-                      _dateController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
-                    });
-                  }
-                },
-                validator: (value) => value == null || value.isEmpty ? 'Please select a date' : null,
-              ),
-              const SizedBox(height: 20),
+              if (_reminderType == oneTime) ...[
+                const Text(
+                  "Select Date",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0B0B45)),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _dateController,
+                  readOnly: true,
+                  decoration: _inputDecoration('Choose a date', icon: Icons.calendar_today),
+                  onTap: () async {
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate ?? DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2100),
+                    );
+                    if (pickedDate != null) {
+                      setState(() {
+                        selectedDate = pickedDate;
+                        _dateController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+                      });
+                    }
+                  },
+                  validator: (value) =>
+                  _reminderType == oneTime && (value == null || value.isEmpty) ? 'Please select a date' : null,
+                ),
+                const SizedBox(height: 20),
+              ],
               const Text(
                 "Select Time",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0B0B45)),
@@ -110,6 +202,7 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
                 },
                 validator: (value) => value == null || value.isEmpty ? 'Please select a time' : null,
               ),
+              _buildWeekdaySelector(),
               const SizedBox(height: 30),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -122,24 +215,14 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
                   if (_formKey.currentState?.validate() != true) return;
 
                   final title = _titleController.text.trim();
-                  final date = _dateController.text.trim();
                   final time = _timeController.text.trim();
 
-                  if (title.isEmpty || date.isEmpty || time.isEmpty || selectedTime == null || selectedDate == null) {
+                  if (title.isEmpty || time.isEmpty || selectedTime == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please fill all fields')),
+                      const SnackBar(content: Text('Please fill all required fields')),
                     );
                     return;
                   }
-
-                  final dtParts = date.split('-');
-                  final reminderDateTime = DateTime(
-                    int.parse(dtParts[0]),
-                    int.parse(dtParts[1]),
-                    int.parse(dtParts[2]),
-                    selectedTime!.hour,
-                    selectedTime!.minute,
-                  );
 
                   try {
                     final user = FirebaseAuth.instance.currentUser;
@@ -156,24 +239,41 @@ class _MedicineReminderScreenState extends State<MedicineReminderScreen> {
                         .collection('MediReminders')
                         .doc();
 
-                    // Save the reminder data to Firestore
-                    await reminderRef.set({
+                    final reminderData = {
                       'title': title,
-                      'timestamp': reminderDateTime.toUtc(),
-                      'notified': false,
-                    });
+                      'time': '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
+                      'type': _reminderType == oneTime ? 'one-time' : 'recurring',
+                    };
+
+                    if (_reminderType == oneTime) {
+                      reminderData.addAll({
+                        'date': _dateController.text.trim(),
+                        'isSent': 'false',  // Store "false" as a string if isSent must be a string
+                      });
+                    } else {
+                      if (_selectedWeekday == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please select a day of the week')),
+                        );
+                        return;
+                      }
+                      reminderData['dayOfWeek'] = _selectedWeekday.toString(); // Convert int to string
+                    }
+
+                    await reminderRef.set(reminderData);
 
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Reminder "$title" set successfully')),
                       );
-
                       setState(() {
                         _titleController.clear();
                         _dateController.clear();
                         _timeController.clear();
                         selectedDate = null;
                         selectedTime = null;
+                        _selectedWeekday = null;
+                        _reminderType = oneTime;
                       });
                     }
                   } catch (e) {

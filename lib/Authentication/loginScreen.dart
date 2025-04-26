@@ -2,8 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:medlink/signUp_CreatingAccount.dart';
-import 'package:medlink/wrapper.dart';
+import 'package:medlink/Authentication/signUp_CreatingAccount.dart';
+import 'package:medlink/Authentication/wrapper.dart';
 import 'package:get/get.dart';
 import 'forgetPassword.dart';
 

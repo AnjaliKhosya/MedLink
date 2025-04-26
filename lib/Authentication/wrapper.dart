@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:medlink/MainScreen.dart';
+import 'package:medlink/Homepage.dart';
 import 'Varify.dart';
 import 'loginScreen.dart';
 

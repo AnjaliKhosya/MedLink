@@ -1,280 +1,241 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:open_file/open_file.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:medlink/medhub/add_document.dart';
 
-class AddDocumentPage extends StatefulWidget {
-  @override
-  _AddDocumentPageState createState() => _AddDocumentPageState();
-}
+class MediHubHomePage extends StatelessWidget {
+  const MediHubHomePage({super.key});
 
-class _AddDocumentPageState extends State<AddDocumentPage> {
-  List<PlatformFile>? _selectedFiles;
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _groupController = TextEditingController();
-  final ImagePicker _imagePicker = ImagePicker();
-
-  Future<void> _pickMedia() async {
-    // Show a dialog to choose between file picker or camera
-    final choice = await showDialog<int>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Select Media"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text("Select Files"),
-                onTap: () {
-                  Navigator.of(context).pop(0); // Choose file picker
-                },
-              ),
-              ListTile(
-                title: Text("Take Photo"),
-                onTap: () {
-                  Navigator.of(context).pop(1); // Choose camera
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (choice != null) {
-      if (choice == 0) {
-        // File picker option
-        FilePickerResult? result = await FilePicker.platform.pickFiles(
-          allowMultiple: true,
-          type: FileType.custom,
-          allowedExtensions: ['pdf', 'jpg', 'png', 'doc', 'docx'],
-        );
-
-        if (result != null) {
-          setState(() {
-            _selectedFiles = result.files;
-          });
-        }
-      } else if (choice == 1) {
-        // Camera option
-        final XFile? photo = await _imagePicker.pickImage(source: ImageSource.camera);
-        if (photo != null) {
-          setState(() {
-            final int filesize = File(photo.path).lengthSync();
-            _selectedFiles = [
-              PlatformFile(
-                size: filesize,
-                name: photo.name,
-                path: photo.path,
-                bytes: File(photo.path).readAsBytesSync(),
-              ),
-            ];
-          });
-        }
-      }
-    }
-  }
-
-  Future<void> _submit() async {
-    final groupName = _groupController.text.trim();
-    final description = _descriptionController.text.trim();
-
-    // Get the current authenticated user
+  // Fetch groups for the user
+  Future<List<Map<String, dynamic>>> fetchGroups() async {
     final user = FirebaseAuth.instance.currentUser;
-    final userId = user?.uid;  // Retrieve the user ID
+    final userId = user?.uid;
 
-    if (_selectedFiles != null && groupName.isNotEmpty && userId != null) {
-      try {
-        // Create a Firestore document for the group under MediRecords
-        final groupDocRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .collection('MediRecords')
-            .doc(groupName); // Using groupName as document ID
+    if (userId == null) return [];
 
-        // Store metadata like description, grade, etc., inside the group document
-        await groupDocRef.set({
-          'description': description,
-          'createdAt': FieldValue.serverTimestamp(),
-          // Add other fields like grade or additional metadata here
-        });
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('MediRecords')
+        .get();
 
-        // Firebase Storage reference to upload files
-        final storageRef = FirebaseStorage.instance.ref().child('users/$userId/MediRecords/$groupName');
-
-        // Upload each selected file to Firebase Storage
-        for (PlatformFile file in _selectedFiles!) {
-          final fileBytes = file.bytes;
-          final fileName = file.name;
-
-          if (fileBytes != null) {
-            try {
-              final fileRef = storageRef.child(fileName);
-
-              // Upload the file
-              await fileRef.putData(fileBytes);
-              print("Uploaded: $fileName");
-
-              // Optionally, upload the metadata for each file under the group
-              final fileMetadata = {
-                'fileName': fileName,
-                'uploadedAt': FieldValue.serverTimestamp(),
-              };
-
-              await groupDocRef.collection('files').add(fileMetadata);
-
-            } catch (e) {
-              print("Error uploading $fileName: $e");
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Failed to upload $fileName")),
-              );
-            }
-          }
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Documents uploaded successfully.")),
-        );
-
-        setState(() {
-          _selectedFiles = null;
-          _groupController.clear();
-          _descriptionController.clear();
-        });
-      } catch (e) {
-        print("Error: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("An error occurred. Please try again.")),
-        );
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please upload documents and enter group name")),
-      );
-    }
+    return querySnapshot.docs.map((doc) {
+      return {
+        'id': doc.id,
+      };
+    }).toList();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF96B7AE),
+      backgroundColor: const Color(0xFFE8F1EF),
       appBar: AppBar(
-        title: Text(
-          "Add Medical Documents",
+        title: const Text(
+          'MediHub Records',
           style: TextStyle(
-            color: Colors.teal[800],
-            fontWeight: FontWeight.w600,
+            color: Colors.teal,
+            fontWeight: FontWeight.bold,
             fontSize: 24,
           ),
         ),
+        backgroundColor: const Color(0xFFE8F1EF),
         centerTitle: true,
-        backgroundColor: Color(0xFF96B7AE),
         elevation: 0,
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-          child: Container(
-            width: 500,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 20,
-                  offset: Offset(0, 8),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: fetchGroups(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(
+              child: Text("No records found. Tap + to add a document."),
+            );
+          }
+
+          final groups = snapshot.data!;
+
+          return ListView.separated(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            itemCount: groups.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final groupName = groups[index]['id'];
+
+              return ListTile(
+                tileColor: Colors.white,
+                leading: const Icon(Icons.folder, color: Colors.teal),
+                title: Text(
+                  groupName,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
-              ],
-            ),
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Upload Documents",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.teal[800],
-                  ),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton.icon(
-                  icon: Icon(Icons.add),
-                  label: Text("Select Files"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal[600],
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DocumentViewerPage(groupName: groupName),
                     ),
-                  ),
-                  onPressed: _pickMedia,
-                ),
-                if (_selectedFiles != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Text(
-                      "${_selectedFiles!.length} files selected",
-                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                    ),
-                  ),
-                SizedBox(height: 25),
-                TextField(
-                  controller: _descriptionController,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText: "Description / Key Points",
-                    prefixIcon: Icon(Icons.description),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                TextField(
-                  controller: _groupController,
-                  decoration: InputDecoration(
-                    labelText: "Group Name (e.g., Myself, Mother)",
-                    prefixIcon: Icon(Icons.group),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _submit,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Text("Upload Documents", style: TextStyle(fontSize: 16,color:Colors.white)),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.teal,
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AddDocumentPage()),
+          );
+        },
+        child: const Icon(Icons.add, color: Colors.white),
+        tooltip: "Add Document",
       ),
     );
   }
 }
+
+class DocumentViewerPage extends StatelessWidget {
+  final String groupName;
+
+  const DocumentViewerPage({super.key, required this.groupName});
+
+  // Fetch documents for the group
+  Future<List<Map<String, dynamic>>> fetchDocuments() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final userId = user?.uid;
+
+    if (userId == null) return [];
+
+    try {
+      final filesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('MediRecords')
+          .doc(groupName)
+          .collection('files')
+          .orderBy('uploadedAt', descending: true)
+          .get();
+
+      if (filesSnapshot.docs.isEmpty) {
+        print("No documents found for group: $groupName");
+      }
+
+      // Collect file details from Firestore directly
+      List<Map<String, dynamic>> filesData = [];
+
+      for (var doc in filesSnapshot.docs) {
+        final fileName = doc['fileName'];
+        final fileUrl = doc['fileUrl']; // Assuming the URL is stored here
+
+        filesData.add({
+          'fileName': fileName,
+          'fileUrl': fileUrl,
+        });
+      }
+
+      // Debug: Print file names and URLs
+      print("Files Data: $filesData");
+
+      return filesData;
+    } catch (e) {
+      print("Error fetching documents: $e");
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFE8F1EF),
+      appBar: AppBar(
+        title: Text(
+          groupName,
+          style: const TextStyle(
+            color: Colors.teal,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        backgroundColor: const Color(0xFFE8F1EF),
+        centerTitle: true,
+        elevation: 0,
+      ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: fetchDocuments(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("No documents available."));
+          }
+
+          final files = snapshot.data!;
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: files.length,
+            itemBuilder: (context, index) {
+              final file = files[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.insert_drive_file, color: Colors.teal),
+                  title: Text(file['fileName']),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.open_in_new),
+                    onPressed: () async {
+                      final fileUrl = file['fileUrl'];
+
+                      if (fileUrl != null && fileUrl.isNotEmpty) {
+                        // Open the file using the OpenFile plugin
+                        final result = await OpenFile.open(fileUrl);
+
+                        if (result.type != ResultType.done) {
+                          // Handle error if file cannot be opened
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Unable to open file.")),
+                          );
+                        }
+                      } else {
+                        // Handle error if fileUrl is null or empty
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Invalid file URL.")),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+
+
